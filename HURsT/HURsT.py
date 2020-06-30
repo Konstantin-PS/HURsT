@@ -61,7 +61,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Основной исполняемый файл.
-v.1.1.1
+v.1.1.4a от 30.06.2020.
 """
 
 #Подключаем парсер конфига.
@@ -111,6 +111,8 @@ class Config:
         
         #Читаем значения из конфига.
         self.method = str(config.get("Settings", "Method"))
+        self.e = float(config.get("CoLoRaDe", "e"))
+        self.debug = int(config.get("Settings", "Debug"))
     
     def parse_params(self):
         """
@@ -139,13 +141,23 @@ class Config:
         #Для выбора метода вычисления:
         #Новые методы добавлять в варианты выбора!
         cmd_args.add_argument('-m', '--method', default='colorade',\
-        type=str, choices=['colorade', 'Colorade'], dest='method',\
+        type=str, choices=['colorade'], dest='method',\
         help='Выбор метода расчёта показателя Хёрста. \
         colorade - использовать метод CoLoRaDe.')
+        #choices=['colorade', 'другой метод']
         
         #Для входного файла:
         cmd_args.add_argument('-f', '--file', type=str,\
         dest='input_file', help='Имя входного csv файла.')
+        
+        #Для минимальной погрешности вычисления H.
+        cmd_args.add_argument('-e', '--epsilon', type=float,\
+        dest='e', help='Минимальная погрешность вычисления H.')
+        
+        #Для дебага (по уровням).
+        cmd_args.add_argument('-d', '--debug', type=int,\
+        dest='debug', help='Выбор уровня дебага. 0 - выкл. \
+        1 и далее - вкл.')
         
         
         #Если при запуске программы не заданы ключи командной строки,
@@ -170,6 +182,10 @@ if __name__ == "__main__":
     то весь код (после конструкции if __name__ == "__main__") 
     считается ею.
     """
+    
+    #Разделитель.
+    print('\n')
+    logging.info('\t')
     
     #Загрузка настроек из файла конфигурации с сохранением в переменную.
     #Если есть параметры командной строки, то они переопределяют
@@ -200,21 +216,36 @@ if __name__ == "__main__":
         #Но так лучше не делать, т.к. если жёстко задавать входной файл,
         #то это будет не удобно.
     
+    #Эпсилон - минимальная погрешность вычисления H.
+    if args.e != None:
+        e = args.e
+    else:
+        e = cfg.e
+        
+    #Дебаг.
+    if args.debug != None:
+        debug = args.debug
+    else:
+        debug = cfg.debug
+    
+    
     #---     
     #Запуск считывания входного файла - отправить данные в обработчик.
     input_data = read_input_data.csv_read(input_file)
     
-    #Дебаг.
-    print(input_data)
+    #Для создания имени выходного файла (+ к имени входного).
+    print("Входной файл: " + input_file)
+    logging.info("Входной файл: " + input_file)
     
     #Запуск расчёта показателя Хёрста выбранным методом.
     if method == "colorade":
         #Запуск расчёта показателя Хёрста методом CoLoRaDe.
-        H_colorade = colorade.colorade(input_data)
+        H_colorade = colorade.colorade(input_data, e, debug)
     else:
         print("Выбран несуществующий метод!")
         logging.info("Выбран несуществующий метод!")
         
+
 """
 Для обработки нескольких файлов одним или несколькими методами
 надо написать bash скрипт с соответсвующими ключами и параметрами.

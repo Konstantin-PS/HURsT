@@ -1,2 +1,2 @@
 # HURsT
-Python program to compute the Hurst exponent
+Python program to compute the Hurst exponent.
