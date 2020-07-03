@@ -58,8 +58,8 @@ HURsT Copyright © 2020 Константин Панков
 
 """
 Программа HURsT для расчёта показателя Хёрста.
-Модуль считывания входных данных из файла.
-v.1.1.3a от 30.06.2020.
+Модуль считывания и записи данных в формате csv.
+v.1.1.4a от 03.07.2020.
 """
 
 #Подключаем модуль взаимодействия с системой.
@@ -76,9 +76,9 @@ format='%(asctime)s %(message)s', datefmt='%d.%m.%Y - %H:%M:%S |')
 #Считывание входного csv файла.
 def csv_read(input_file):
     #Открываем входной файл.
-    csv_file = open(input_file, "r", newline="")
+    in_csv_file = open(input_file, "r", newline="")
     #Считываем содержимое.
-    csv_reader = csv.reader(csv_file)
+    csv_reader = csv.reader(in_csv_file)
     
     #Создаём пустой список под данные из входного файла.
     #0-й элемент не будет использоваться, но из n надо вычесть 1.
@@ -94,7 +94,30 @@ def csv_read(input_file):
             input_data.append(float(input_data_row))
 
     #Закрываем входной файл.
-    csv_file.close()
+    in_csv_file.close()
     
-    #Возвращаем считанные данные в виде списка. Можно переделать в массив.
+    #Возвращаем считанные данные в виде списка.
     return input_data
+
+
+def csv_write(input_file, method, data, e):
+    #Создаём и открываем выходной файл.
+    output_file = str(input_file[0:len(input_file)-4] +\
+    "_" + str(method) + "_out.csv")
+    out_csv_file = open(output_file, "w", newline='')
+    
+    #Подготовка и запись выходных данных (как словаря).
+    header = ["H", "e"]
+    csv_writer = csv.DictWriter(out_csv_file, fieldnames = header)
+    
+    #Запись заголовка.
+    csv_writer.writeheader()
+    
+    #Запись данных.
+    i=1
+    while i<len(data):
+        csv_writer.writerow({'H': data[int(i)], 'e': e[int(i)]})
+        i = i+1
+    
+    #Закрытие выходного файда.
+    out_csv_file.close()

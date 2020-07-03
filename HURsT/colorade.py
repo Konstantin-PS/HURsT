@@ -59,7 +59,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Модуль расчёта показателя Хёрста методом CoLoRaDe.
-v.1.1.4a от 30.06.2020.
+v.1.1.6a от 03.07.2020.
 """
 
 #Подключаем готовый модуль логгирования.
@@ -73,6 +73,7 @@ logging.basicConfig(filename='log.log',level=logging.INFO, \
 format='%(asctime)s %(message)s', datefmt='%d.%m.%Y - %H:%M:%S |')
 
 
+#Функция для расчёта ковариации в методе CoLoRaDe.
 def comp_gamma(input_data, M, n, k):
     #Так как список начинается с 0 элемента, он не ипользуется,
     #а от размера списка данных (n) надо отнять 1. 
@@ -93,7 +94,7 @@ def comp_gamma(input_data, M, n, k):
     
     return(gamma)
 
-#Функция расчёта H методом CoLoRaDe.
+#Функция расчёта H методом CoLoRaDe. (HEAF)
 def colorade(input_data, e, debug):
     
     print("Используется метод CoLoRaDe.")
@@ -107,24 +108,33 @@ def colorade(input_data, e, debug):
     if debug >= 1:
         print("n=" + str(n))
     
-    #Мат. ожидание.
+    #Математическое ожидание.
     M = (1/n)*sum(input_data)
     
-    #Цикл расчёта H.
-    #Последний элемент списка будет самый правильный.
+    #Цикл расчёта H и перед ним инициализация переменных.
     H = [0]
+    ACF = [0]
+    f_H = [0]
+    df_H = [0]
+    e_current = [0, 0]
     i = 1
     
     while i <= n:
         k = i
         
-        #АвтоКорреляционная Функция
-        ACF = comp_gamma(input_data, M, n, k)/\
-        comp_gamma(input_data, M, n, 0)
+        #Дебаг.
+        if debug >= 1:
+            print("i=" + str(i))
         
-        #H_1 отдельно.
+        #АвтоКорреляционная Функция (ковариация/дисперсию)
+        ACF.insert(int(i), comp_gamma(input_data, M, n, k)/\
+        comp_gamma(input_data, M, n, 0))
+        #Возможно, лучше считать отдельно.
+        
+        #H_1 отдельно.(k!=1)
         if i==1:
-            H.insert(int(i), (0.5+1/(2*math.log(2))*math.log(1+ACF)))
+            H.insert(int(i), (0.5+1/(2*math.log(2))*\
+            math.log(1+ACF[int(i)])))
         
         #H_2 и далее.
         if i>1:
@@ -134,24 +144,30 @@ def colorade(input_data, e, debug):
                 print("H[i-1]=" + str(H[i-1]))
             
             #f(H_i)
-            f_H = ACF-0.5*((k+1)**(2*H[int(i-1)])-2*k**(2*H[int(i-1)])+\
-            (k-1)**(2*H[int(i-1)]))
-        
-            #f'(H_i)
-            df_H = -0.5*(2*math.log(k+1)*(k+1)**(2*H[int(i-1)])-\
-            (4*math.log(k))*(k)**(2*H[int(i-1)])+\
-            (2*math.log(k-1))*(k-1)**(2*H[int(i-1)]))
+            f_H.insert(int(i), ACF[int(i)]-0.5*((k+1)**(2*H[int(i-1)])-\
+            2*k**(2*H[int(i-1)])+(k-1)**(2*H[int(i-1)])))
             
-            #HEAF(i+1), почти. 
-            H.insert(int(i), (H[int(i-1)]-f_H/df_H))
+            if debug >= 2:
+                print("f(H_" + str(i) + ")=" + str(f_H))
             
-            e_stop = abs(H[int(i)]-H[int(i-1)])
-            if e_stop <= e: break
-        
-        #Дебаг.
-        if debug >= 1:
-            print("i=" + str(i))
-        
+            #f'(H_i), k!=1.
+            df_H.insert(int(i), -0.5*(2*math.log(k+1)*\
+            (k+1)**(2*H[int(i-1)])-(4*math.log(k))*\
+            (k)**(2*H[int(i-1)])+\
+            (2*math.log(k-1))*(k-1)**(2*H[int(i-1)])))
+            
+            #HEAF(i).
+            H.insert(int(i), (H[int(i-1)]-f_H[int(i-1)]/df_H[int(i-1)]))
+            
+            if debug >= 1:
+                print("H_" + str(i) + "=" + str(H[int(i)]))
+            
+            #Остановка расчётов.
+            e_current.insert(int(i), abs(H[int(i)]-H[int(i-1)]))
+            
+            if e_current[int(i)] <= e: break
+            #Без 1, т.к. для него не считается (e[1]=0).
+            
         #Итерация цикла.
         i = i+1
         
@@ -159,14 +175,27 @@ def colorade(input_data, e, debug):
     #Дебаг.
     if debug >= 1:
         print("АКФ: " + str(ACF))
-        print("H=" + str(H))
+        #print("H=" + str(H))
     
-    #Последний показатель Хёрста правильный.
-    good_H = H[len(H)-1]
+    #Вывод значений. Возможно, надо сделать отключаемым.
+    print("H=" + str(H))
+    print("e=" + str(e_current))
     
-    print("H=" + str(good_H))
-    print("e=" + str(e_stop))
+    logging.info("H=" + str(H) + '\t' + "e=" + str(e_current))
     
-    logging.info("H=" + str(good_H) + '\t' + "e=" + str(e_stop))
+    return(H, e_current)
     
-    return(good_H, e_stop)
+    """    
+    Для предотвращения ошибок переполнения float и деления на 0 (df_H)
+    надо увеличить эпсилон (уменьшить требуемую точность вычисления).
+    
+    В статье большой набор входных данных (1000 значений) разбили на 
+    сэмплы по 200 значений (оптимально, по мнению автора).
+    По большой выборке проходило окно определённого размера (N точек).
+    Для каждого получившегося сэмпла (точек в окне) вычислялся H 
+    (до установленной точности) и брался минимальный из полученных H.
+    Потом окно сдвигалось (на размер себя же?) и вычисления повторялись. 
+    По полученным данным можно было строить график.
+    
+    H не должен быть отрицательным!
+    """
