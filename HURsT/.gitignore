@@ -1,2 +1,4 @@
 #Ignore __pycache__/ directory
 __pycache__/
+log.log
+data/

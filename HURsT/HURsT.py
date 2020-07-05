@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-#Путь к интерпретатору пайтона.
+#Путь к интерпретатору Python v3.
 # -*- coding: utf-8 -*-
-#Выбор кодировки (без него не работает русский язык).
+#Выбор кодировки (без него не работает Русский язык).
 
 """
 This file is part of HURsT.
@@ -61,7 +61,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Основной исполняемый файл.
-v.1.1.1
+v.1.1.7a от 05.07.2020.
 """
 
 #Подключаем парсер конфига.
@@ -75,7 +75,7 @@ import sys
 #Подключаем модуль взаимодействия с системой.
 import os
 #Подключаем свой модуль считывания входного файла.
-import read_input_data
+import csv_file
 #Подключаем свой модуль расчёта показателя Хёрста методом CoLoRaDe.
 import colorade
 
@@ -111,6 +111,9 @@ class Config:
         
         #Читаем значения из конфига.
         self.method = str(config.get("Settings", "Method"))
+        self.e = float(config.get("CoLoRaDe", "e"))
+        self.window_size = int(config.get("CoLoRaDe", "Window_size"))
+        self.debug = int(config.get("Settings", "Debug"))
     
     def parse_params(self):
         """
@@ -136,16 +139,30 @@ class Config:
         cmd_args = argprs.add_argument_group('Command line arguments',\
         'Определение настроек ключами (аргументами) командной строки.')
         
-        #Для выбора метода вычисления:
+        #Для выбора метода вычисления.
         #Новые методы добавлять в варианты выбора!
         cmd_args.add_argument('-m', '--method', default='colorade',\
-        type=str, choices=['colorade', 'Colorade'], dest='method',\
+        type=str, choices=['colorade'], dest='method',\
         help='Выбор метода расчёта показателя Хёрста. \
         colorade - использовать метод CoLoRaDe.')
+        #choices=['colorade', 'другой метод']
         
-        #Для входного файла:
+        #Для входного файла.
         cmd_args.add_argument('-f', '--file', type=str,\
         dest='input_file', help='Имя входного csv файла.')
+        
+        #Для минимальной погрешности вычисления H.
+        cmd_args.add_argument('-e', '--epsilon', type=float,\
+        dest='e', help='Минимальная погрешность вычисления H.')
+        
+        #Для размера скользящего окна.
+        cmd_args.add_argument('-w', '--window', type=int,\
+        dest='window_size', help='Размер скользящего окна.')
+        
+        #Для дебага (по уровням).
+        cmd_args.add_argument('-d', '--debug', type=int,\
+        dest='debug', help='Выбор уровня дебага. 0 - выкл. \
+        1 и далее - вкл.')
         
         
         #Если при запуске программы не заданы ключи командной строки,
@@ -161,6 +178,8 @@ class Config:
         #Возвращаем значения аргументов из функции.
         return self.arguments
         
+    
+        
 
 if __name__ == "__main__":
     """
@@ -170,6 +189,10 @@ if __name__ == "__main__":
     то весь код (после конструкции if __name__ == "__main__") 
     считается ею.
     """
+    
+    #Разделитель.
+    print('\n')
+    logging.info('\t')
     
     #Загрузка настроек из файла конфигурации с сохранением в переменную.
     #Если есть параметры командной строки, то они переопределяют
@@ -196,26 +219,59 @@ if __name__ == "__main__":
         print("Не задан входной файл!")
         logging.info("Не задан входной файл!")
         
-        #input_file = cfg.input_file
-        #Но так лучше не делать, т.к. если жёстко задавать входной файл,
-        #то это будет не удобно.
+    
+    #Эпсилон - минимальная погрешность вычисления H.
+    if args.e != None:
+        e = args.e
+    else:
+        e = cfg.e
+        
+    #window_size - размер скользящего окна.
+    if args.window_size != None:
+        window_size = args.window_size
+    else:
+        window_size = cfg.window_size
+        
+    #Дебаг.
+    if args.debug != None:
+        debug = args.debug
+    else:
+        debug = cfg.debug
+    
     
     #---     
-    #Запуск считывания входного файла - отправить данные в обработчик.
-    input_data = read_input_data.csv_read(input_file)
+    #Запуск считывания входного файла.
+    input_data = csv_file.csv_read(input_file)
     
-    #Дебаг.
-    print(input_data)
+    #Показ и логгирование имени входного файла.
+    print("Входной файл: " + input_file)
+    logging.info("Входной файл: " + input_file)
     
     #Запуск расчёта показателя Хёрста выбранным методом.
     if method == "colorade":
         #Запуск расчёта показателя Хёрста методом CoLoRaDe.
-        H_colorade = colorade.colorade(input_data)
+        H_colorade, e_H =\
+        colorade.colorade(input_data, e, window_size, debug)
+        
+        #Запись полученных данных в csv файл.
+        #Выходной файл помещается в директорию, где лежит входной файл,
+        #к имени файла дописываются метод расчёта и обозначение "out".
+        csv_file.csv_write(input_file, method, window_size, e,\
+        H_colorade, e_H)
+        
+        logging.info("Размер окна: " + str(window_size))
+        logging.info("Минимальная допустимая ошибка e: " + str(e))
+    
     else:
         print("Выбран несуществующий метод!")
         logging.info("Выбран несуществующий метод!")
         
+
 """
 Для обработки нескольких файлов одним или несколькими методами
 надо написать bash скрипт с соответсвующими ключами и параметрами.
+"""
+
+"""
+! Сделать скользяще окно с изменением шага. (?)
 """

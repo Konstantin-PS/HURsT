@@ -58,8 +58,8 @@ HURsT Copyright © 2020 Константин Панков
 
 """
 Программа HURsT для расчёта показателя Хёрста.
-Модуль считывания входных данных из файла.
-v.1.1.1
+Модуль считывания и записи данных в формате csv.
+v.1.1.6a от 05.07.2020.
 """
 
 #Подключаем модуль взаимодействия с системой.
@@ -76,12 +76,13 @@ format='%(asctime)s %(message)s', datefmt='%d.%m.%Y - %H:%M:%S |')
 #Считывание входного csv файла.
 def csv_read(input_file):
     #Открываем входной файл.
-    csv_file = open(input_file, "r", newline="")
+    in_csv_file = open(input_file, "r", newline="")
     #Считываем содержимое.
-    csv_reader = csv.reader(csv_file)
+    csv_reader = csv.reader(in_csv_file)
     
     #Создаём пустой список под данные из входного файла.
-    input_data = []
+    #0-й элемент не будет использоваться, но из n надо вычесть 1.
+    input_data = [0]
     
     #Вытаскивание данных из файла.
     for row in csv_reader:
@@ -89,19 +90,35 @@ def csv_read(input_file):
             #Разделитель - запятая.
             input_data_row = row[0]
             
-            #Дебаг
-            #print(input_data_row)
-            
             #Добавляем приведённые данные в список (к концу).
             input_data.append(float(input_data_row))
 
     #Закрываем входной файл.
-    csv_file.close()
+    in_csv_file.close()
     
-    #Возвращаем считанные данные в виде списка. Можно переделать в массив.
+    #Возвращаем считанные данные в виде списка.
     return input_data
+
+
+def csv_write(input_file, method, window_size, e, data, e_H):
+    #Создаём и открываем выходной файл.
+    output_file = str(input_file[0:len(input_file)-4] + "--OUT--"+\
+    "method_" + str(method) + "-window_size_" + str(window_size) +\
+    "-e_" + str(e) +  ".csv")
+    out_csv_file = open(output_file, "w", newline='')
     
+    #Подготовка и запись выходных данных (как словаря).
+    header = ["H", "e_H"]
+    csv_writer = csv.DictWriter(out_csv_file, fieldnames = header)
     
-if __name__ == "__main__":
-    input_file = "test.csv"
-    csv_read(input_file)
+    #Запись заголовка.
+    csv_writer.writeheader()
+    
+    #Запись данных.
+    i=1
+    while i<len(data):
+        csv_writer.writerow({'H': data[int(i)], 'e_H': e_H[int(i)]})
+        i = i+1
+    
+    #Закрытие выходного файда.
+    out_csv_file.close()
