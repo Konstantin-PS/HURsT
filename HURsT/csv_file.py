@@ -59,7 +59,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Модуль считывания и записи данных в формате csv.
-v.1.1.4a от 03.07.2020.
+v.1.1.6a от 05.07.2020.
 """
 
 #Подключаем модуль взаимодействия с системой.
@@ -100,14 +100,15 @@ def csv_read(input_file):
     return input_data
 
 
-def csv_write(input_file, method, data, e):
+def csv_write(input_file, method, window_size, e, data, e_H):
     #Создаём и открываем выходной файл.
-    output_file = str(input_file[0:len(input_file)-4] +\
-    "_" + str(method) + "_out.csv")
+    output_file = str(input_file[0:len(input_file)-4] + "--OUT--"+\
+    "method_" + str(method) + "-window_size_" + str(window_size) +\
+    "-e_" + str(e) +  ".csv")
     out_csv_file = open(output_file, "w", newline='')
     
     #Подготовка и запись выходных данных (как словаря).
-    header = ["H", "e"]
+    header = ["H", "e_H"]
     csv_writer = csv.DictWriter(out_csv_file, fieldnames = header)
     
     #Запись заголовка.
@@ -116,7 +117,7 @@ def csv_write(input_file, method, data, e):
     #Запись данных.
     i=1
     while i<len(data):
-        csv_writer.writerow({'H': data[int(i)], 'e': e[int(i)]})
+        csv_writer.writerow({'H': data[int(i)], 'e_H': e_H[int(i)]})
         i = i+1
     
     #Закрытие выходного файда.
