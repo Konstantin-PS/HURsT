@@ -59,7 +59,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Модуль расчёта показателя Хёрста методом CoLoRaDe.
-v.1.1.8a от 05.07.2020.
+v.1.1.9a от 07.07.2020.
 """
 
 #Подключаем готовый модуль логгирования.
@@ -119,10 +119,34 @@ def colorade(input_data, e, window_size, debug):
     m = 1 #Индекс конца окна.
     
     #Задание количества окон.
-    if n%window_size == 0:
-        N_windows = n//window_size
+    if window_size > 0:
+        if n%window_size == 0:
+            N_windows = n//window_size
+        else:
+            N_windows = n//window_size+1
+    elif window_size == 0:
+        #Автоподстройка размера окна по соотношению 1:5.
+        #Про соотношение см. литературу.
+        #Но лучше задавать размер окна вручную.
+        window_size = n/5
+        if n%window_size == 0:
+            window_size = n//5
+        else:
+            window_size = n//5+1
+            
+        #Дебаг.
+        if debug >= 1:
+            print("auto_window_size=" + str(window_size))
+        
+        #Количество окон.
+        if n%window_size == 0:
+            N_windows = n//window_size
+        else:
+            N_windows = n//window_size+1
     else:
-        N_windows = n//window_size+1
+        print("Введено неправильное значение размера окна.")
+        logging.info("Введено неправильное значение размера окна.")
+		
     
     #Дебаг.
     if debug >= 1:
@@ -256,7 +280,7 @@ def colorade(input_data, e, window_size, debug):
         logging.info("H=" + str(H) + '\t' + "e_H=" + str(e_H))
     
     #Возвращение полученных данных из функции.
-    return(H, e_H)
+    return(H, e_H, window_size)
     
     
     """    

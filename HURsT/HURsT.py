@@ -61,7 +61,7 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Основной исполняемый файл.
-v.1.1.7a от 05.07.2020.
+v.1.1.8a от 07.07.2020.
 """
 
 #Подключаем парсер конфига.
@@ -114,6 +114,7 @@ class Config:
         self.e = float(config.get("CoLoRaDe", "e"))
         self.window_size = int(config.get("CoLoRaDe", "Window_size"))
         self.debug = int(config.get("Settings", "Debug"))
+        self.out_format = str(config.get("Settings", "OutFormat"))
     
     def parse_params(self):
         """
@@ -157,13 +158,21 @@ class Config:
         
         #Для размера скользящего окна.
         cmd_args.add_argument('-w', '--window', type=int,\
-        dest='window_size', help='Размер скользящего окна.')
+        dest='window_size', help='Размер скользящего окна: число или\
+        0 - автоматически подстраивается под размер всей выборки\
+        с соотношением 1:5.')
         
         #Для дебага (по уровням).
         cmd_args.add_argument('-d', '--debug', type=int,\
         dest='debug', help='Выбор уровня дебага. 0 - выкл. \
         1 и далее - вкл.')
         
+        #Для формата выходного файла.
+        cmd_args.add_argument('--format', type=str,\
+        dest='out_format',\
+        help='Выбор варианта форматирования выходного файла:\
+		full - полное, с колонками доп. данных и названиями колонок;\
+		default - вывод только одной колонки данных (H).')
         
         #Если при запуске программы не заданы ключи командной строки,
         #то показывается справка.
@@ -238,6 +247,12 @@ if __name__ == "__main__":
     else:
         debug = cfg.debug
     
+    #Формат выходного файла.
+    if args.out_format != None:
+        out_format = args.out_format
+    else:
+        out_format = cfg.out_format
+		
     
     #---     
     #Запуск считывания входного файла.
@@ -250,16 +265,21 @@ if __name__ == "__main__":
     #Запуск расчёта показателя Хёрста выбранным методом.
     if method == "colorade":
         #Запуск расчёта показателя Хёрста методом CoLoRaDe.
-        H_colorade, e_H =\
+        H_colorade, e_H, window_size_real =\
         colorade.colorade(input_data, e, window_size, debug)
         
         #Запись полученных данных в csv файл.
         #Выходной файл помещается в директорию, где лежит входной файл,
         #к имени файла дописываются метод расчёта и обозначение "out".
-        csv_file.csv_write(input_file, method, window_size, e,\
-        H_colorade, e_H)
+        if out_format == 'default':
+            csv_file.csv_write(input_file, method, window_size_real, e,\
+            H_colorade, e_H)
+            
+        elif out_format == 'full':
+            csv_file.csv_write_full(input_file, method,\
+            window_size_real, e, H_colorade, e_H)
         
-        logging.info("Размер окна: " + str(window_size))
+        logging.info("Размер окна: " + str(window_size_real))
         logging.info("Минимальная допустимая ошибка e: " + str(e))
     
     else:
