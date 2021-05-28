@@ -59,13 +59,15 @@ HURsT Copyright © 2020 Константин Панков
 """
 Программа HURsT для расчёта показателя Хёрста.
 Модуль расчёта показателя Хёрста методом CoLoRaDe.
-v.1.1.9a от 07.07.2020.
+v.1.2.10a от 28.05.2021.
 """
 
 #Подключаем готовый модуль логгирования.
 import logging
 #Подключаем модуль math для математики.
 import math
+#Подключаем модуль numpy для функции поиска нулей
+import numpy as np
 
 
 #Настройка логгирования.
@@ -187,6 +189,8 @@ def colorade(input_data, e, window_size, debug):
             
         m = current_window_size+l
         M = (1/n)*sum(input_data[l:m])
+        #Подсчёт ненулевых элементов в окне
+        non_zeroes = np.count_nonzero(input_data[l:m])
         l = current_window_size+l
         
         #Дебаг.
@@ -202,12 +206,19 @@ def colorade(input_data, e, window_size, debug):
             #Дебаг.
             if debug >= 3:
                 print("i=" + str(i))
+                
+            #Зануление H, если в окне все числа нули
+            #(чтобы не было ошибки деления на 0)
+            #и пропуск итерации
             
-            #АвтоКорреляционная Функция (ковариация/дисперсию)
-            ACF.insert(int(i),\
-            comp_gamma(input_data, M, current_window_size, k)/\
-            comp_gamma(input_data, M, current_window_size, 0))
-            #Возможно, лучше считать отдельно.
+            if non_zeroes == 0:
+                    ACF.insert(int(i),0)
+            else:
+                #АвтоКорреляционная Функция (ковариация/дисперсию)
+                ACF.insert(int(i),\
+                comp_gamma(input_data, M, current_window_size, k)/\
+                comp_gamma(input_data, M, current_window_size, 0))
+                #Возможно, лучше считать отдельно.
             
             #H_1 отдельно.(k!=1)
             if i==1:
@@ -227,16 +238,20 @@ def colorade(input_data, e, window_size, debug):
                 
                 if debug >= 2:
                     print("f(H_" + str(i) + ")=" + str(f_H))
+                    
+                if non_zeroes == 0:
+                    df_H.insert(int(i),0)
+                    w_H.insert(int(i),0)
+                else:
+                    #f'(H_i), k!=1.
+                    df_H.insert(int(i), -0.5*(2*math.log(k+1)*\
+                    (k+1)**(2*w_H[int(i-1)])-(4*math.log(k))*\
+                    (k)**(2*w_H[int(i-1)])+\
+                    (2*math.log(k-1))*(k-1)**(2*w_H[int(i-1)])))
                 
-                #f'(H_i), k!=1.
-                df_H.insert(int(i), -0.5*(2*math.log(k+1)*\
-                (k+1)**(2*w_H[int(i-1)])-(4*math.log(k))*\
-                (k)**(2*w_H[int(i-1)])+\
-                (2*math.log(k-1))*(k-1)**(2*w_H[int(i-1)])))
-                
-                #HEAF(i).
-                w_H.insert(int(i), (w_H[int(i-1)]-\
-                f_H[int(i-1)]/df_H[int(i-1)]))
+                    #HEAF(i).
+                    w_H.insert(int(i), (w_H[int(i-1)]-\
+                    f_H[int(i-1)]/df_H[int(i-1)]))
                 
                 if debug >= 2:
                     print("w_H_" + str(i) + "_" + str(j) +\
@@ -256,8 +271,12 @@ def colorade(input_data, e, window_size, debug):
                 print("АКФ[" + str(i) + "]: " + str(ACF))
                 #print("H=" + str(H))
             
-            #Запись минимального значения H из окна.
-            H.insert(int(j), min(w_H[1:len(w_H)]))
+            if non_zeroes == 0:
+                H.insert(int(j),0)
+                #e_H.insert(int(j),0)
+            else:
+                #Запись минимального значения H из окна.
+                H.insert(int(j), min(w_H[1:len(w_H)]))
             
             #Запись значения e для минимального H.
             #! НЕ работает?
